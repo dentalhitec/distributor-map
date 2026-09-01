@@ -18,8 +18,16 @@
     <!-- ── Sidebar ────────────────────────────────────────────── -->
     <div id="sidebar">
 
-      <!-- Header avec logo -->
+      <!-- Marque + recherche -->
       <div class="sidebar-header">
+
+        <div class="sidebar-brand">
+          <div class="sidebar-logo-wrap">
+            <img src="logo.jpg" alt="Dentalhitec" />
+          </div>
+          <p class="sidebar-eyebrow">Réseau de distributeurs agréés</p>
+        </div>
+
         <!-- Champ de recherche -->
         <div id="search-container">
           <div class="search-wrapper">
@@ -30,14 +38,14 @@
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </span>
-            <input id="place-search" type="text" placeholder="Rechercher par ville ou code postal…" autocomplete="off"
-              aria-label="Rechercher un distributeur" />
+            <input id="place-search" type="text" placeholder="Ville ou code postal" autocomplete="off"
+              aria-label="Rechercher un distributeur par ville ou code postal" />
           </div>
         </div>
       </div>
 
-      <!-- Label résultats (injecté dynamiquement aussi) -->
-      <div id="results-label" style="display:none;"></div>
+      <!-- Barre de résultats : compteur + portée de la recherche -->
+      <div id="results-label" style="display:none;" role="status" aria-live="polite"></div>
 
       <!-- Liste des distributeurs -->
       <ul id="places-list" role="list" aria-label="Liste des distributeurs"></ul>
@@ -45,11 +53,7 @@
       <!-- Détail d'un distributeur -->
       <div id="place-details" style="display:none;"></div>
 
-      <!-- Pied de sidebar -->
-      <div class="sidebar-footer">
-        <span class="sidebar-footer-text">Réseau mondial Dentalhitec</span>
-        <span class="sidebar-footer-dot" title="Réseau actif"></span>
-      </div>
+      
 
     </div><!-- /sidebar -->
 

@@ -9,21 +9,59 @@ let placesListEl;
 let detailsEl;
 let searchBarEl;
 let resultsLabelEl;
-let currentSearch = null; // résultat autocomplete actif
 
 // ─── Icônes SVG inline ──────────────────────────────────────
+// Réduites au strict nécessaire : la fiche de détail se lit comme un
+// tableau de spécifications, où un libellé fait le travail d'une icône.
 const ICONS = {
-  pin:      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
-  mail:     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>`,
-  phone:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.1a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.23h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l1.04-.94a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
-  user:     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
-  zone:     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`,
-  box:      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`,
-  calendar: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
-  globe:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
-  arrow:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
-  backArrow:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  backArrow: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
 };
+
+// ─── Échappement ────────────────────────────────────────────
+// Les données viennent d'un JSON édité à la main : on les traite en texte.
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+// ─── Normalisation de casse ─────────────────────────────────
+// Le JSON est saisi en capitales ("BRADFORD, ONTARIO", "ANWAR KHALID").
+// La hiérarchie repose sur le contraste capitales étendues / bas de casse :
+// si l'adresse crie autant que la raison sociale, ce contraste disparaît.
+// On ne retouche donc que les chaînes sans aucune minuscule, pour laisser
+// intacte toute casse déjà voulue ("SAS EDI", "Hamed Sargazi").
+const PARTICLES = new Set([
+  "de", "du", "des", "d", "la", "le", "les", "l",
+  "sur", "sous", "lès", "lez", "en", "et", "au", "aux",
+]);
+
+function deshout(text, placeName = false) {
+  const str = String(text ?? "");
+  if (!str || /[a-z\u00E0-\u00FF]/.test(str)) return str;
+
+  return str.toLowerCase().replace(/[^\s-]+/g, (word, offset) => {
+    if (placeName && offset > 0 && PARTICLES.has(word)) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  });
+}
+
+// ─── Graduation du rail ─────────────────────────────────────
+// La longueur de la graduation encode la bande de distance : le plus
+// proche porte la plus longue. Sans recherche active il n'y a rien à
+// mesurer, et l'échelle reste uniforme plutôt que de faire semblant.
+const TICK_BANDS = [
+  { max: 50,       width: 13 },
+  { max: 200,      width: 10 },
+  { max: 600,      width: 8  },
+  { max: 2000,     width: 6  },
+  { max: Infinity, width: 5  },
+];
+
+function tickWidth(distance) {
+  if (distance === undefined) return 5;
+  return TICK_BANDS.find(b => distance < b.max).width;
+}
 
 // ─── Chargement Google Maps ──────────────────────────────────
 function loadGoogleMaps() {
@@ -94,15 +132,13 @@ async function initMap() {
     const place = autocomplete.getPlace();
     if (!place.geometry) return;
 
-    currentSearch = place;
     map.panTo(place.geometry.location);
     map.setZoom(10);
 
-    const label = (place.formatted_address || "").replace(/\d+/g, "").trim();
-    setResultsLabel(`Résultats proches de ${label}`);
+    const from = place.name || (place.formatted_address || "").split(",")[0].trim();
 
     const sorted = sortMarkersByDistance(place.geometry.location);
-    updatePlacesList(sorted);
+    updatePlacesList(sorted, `triés depuis ${from}`);
   });
 }
 
@@ -140,48 +176,42 @@ function addMarker(place) {
 }
 
 // ─── Mise à jour de la liste ─────────────────────────────────
-function updatePlacesList(placesWithDistances) {
+function updatePlacesList(placesWithDistances, scope) {
   placesListEl.innerHTML = "";
   placesWithDistances.forEach(({ place, distance }, i) => {
     const item = createListItem(place, distance, i);
     placesListEl.appendChild(item);
   });
+  setResultsBar(placesWithDistances.length, scope);
 }
 
 // ─── Création d'un élément liste ────────────────────────────
 function createListItem(place, distance, index) {
   const li = document.createElement("li");
   li.classList.add("place-item");
-  li.style.animationDelay = `${index * 0.03}s`;
   li.setAttribute("role", "listitem");
   li.setAttribute("tabindex", "0");
   li.setAttribute("aria-label", place.Distributeur);
 
-  // Initiales pour avatar
-  const initials = (place.Distributeur || "?")
-    .split(" ")
-    .slice(0, 2)
-    .map(w => w[0])
-    .join("")
-    .toUpperCase();
+  // La graduation se trace en cascade : un seul moment orchestré.
+  li.style.setProperty("--tick", `${tickWidth(distance)}px`);
 
-  const distanceBadge = distance !== undefined
-    ? `<span class="place-distance">${distance.toFixed(1)} km</span>`
+  const dist = distance !== undefined
+    ? `<span class="place-distance">${distance.toFixed(0)} km</span>`
     : "";
 
+  // Le lieu suffit dans la liste ; la voie complète attend la fiche.
+  const where = deshout(place.lieu || place.Adresse || "", true);
+
   li.innerHTML = `
-    <div class="place-avatar" aria-hidden="true">
-      ${place.logo
-        ? `<img src="${place.logo}" alt="${place.Distributeur}" loading="lazy" onerror="this.parentElement.textContent='${initials}'">`
-        : initials}
+    <span class="place-tick" aria-hidden="true" style="animation-delay:${Math.min(index, 14) * 0.025}s"></span>
+    <div class="place-head">
+      <span class="place-name">${esc(place.Distributeur)}</span>
+      ${dist}
     </div>
-    <div class="place-info">
-      <div class="place-name">${place.Distributeur}</div>
-      <div class="place-address">${place.Adresse ? place.Adresse + ", " : ""}${place.zipcode || ""} ${place.lieu || ""}</div>
-    </div>
-    <div class="place-meta">
-      ${distanceBadge}
-      <span class="place-arrow" aria-hidden="true">${ICONS.arrow}</span>
+    <div class="place-address">${esc(where) || "—"}</div>
+    <div class="place-data">
+      <span>${esc(place.zipcode || place.Zone || "")}</span>
     </div>
   `;
 
@@ -201,130 +231,83 @@ function createListItem(place, distance, index) {
 
 // ─── Affichage du détail ─────────────────────────────────────
 function showPlaceDetails(place) {
-  // Produits en badges
-  const products = place.Produit
-    ? place.Produit.split(",").map(p =>
-        `<span class="product-tag">${p.trim()}</span>`
-      ).join("")
+  // Chaque référence portée par le distributeur, une par ligne.
+  const refs = place.Produit
+    ? place.Produit.split(",").map(p => p.trim()).filter(Boolean)
+        .map(p => `<div class="ref-item">${esc(p)}</div>`).join("")
     : null;
 
-  // Badge journée découverte
+  // Le vert ne sert qu'au statut.
   const discovery = place["Journée découverte"]
-    ? `<span class="badge-discovery">${place["Journée découverte"]}</span>`
-    : "";
+    ? `<span class="badge-discovery">${esc(place["Journée découverte"])}</span>`
+    : null;
 
-  // Téléphone
   const phone = place["Téléphone"]
-    ? `<a href="tel:${place["Téléphone"].replace(/\s/g,"")}">${place["Téléphone"]}</a>`
-    : "—";
+    ? `<a href="tel:${esc(place["Téléphone"].replace(/\s/g, ""))}">${esc(place["Téléphone"])}</a>`
+    : null;
 
-  // Email
   const mail = place.mail
-    ? `<a href="mailto:${place.mail}">${place.mail}</a>`
-    : "—";
+    ? `<a href="mailto:${esc(place.mail)}">${esc(place.mail)}</a>`
+    : null;
 
-  // Site web
+  // Site web : on complète le protocole s'il manque, on l'affiche sans.
   const siteUrl = place.site
     ? (/^https?:\/\//i.test(place.site) ? place.site : `https://${place.site}`)
     : null;
   const site = siteUrl
-    ? `<a href="${siteUrl}" target="_blank" rel="noopener">${place.site.replace(/^https?:\/\//i,"").replace(/\/$/,"")}</a>`
+    ? `<a href="${esc(siteUrl)}" target="_blank" rel="noopener">${esc(place.site.replace(/^https?:\/\//i, "").replace(/\/$/, ""))}</a>`
     : null;
 
+  // Une ligne de spécification n'apparaît que si la donnée existe.
+  const row = (key, value, isData) => value
+    ? `<div class="spec-row">
+        <div class="spec-key">${key}</div>
+        <div class="spec-val${isData ? " is-data" : ""}">${value}</div>
+      </div>`
+    : "";
+
+  // Un intertitre n'apparaît que si son groupe porte au moins une ligne.
+  const group = (title, rows) =>
+    rows ? `<div class="spec-group-title">${title}</div>${rows}` : "";
+
+  const address = [deshout(place.Adresse, true), place.zipcode, deshout(place.lieu, true)]
+    .filter(Boolean).join(", ");
+
   detailsEl.innerHTML = `
-    <!-- Hero bleu -->
-    <div class="detail-hero">
-      <div class="detail-logo-wrap">
-        <img src="${place.logo || 'logo.jpg'}" alt="${place.Distributeur}" onerror="this.src='logo.jpg'" />
+    <!-- Plaque signalétique -->
+    <div class="detail-plate">
+      <div class="detail-plate-logo">
+        <img src="${esc(place.logo || "logo.jpg")}" alt="" onerror="this.src='logo.jpg'" />
       </div>
-      <div class="detail-title">${place.Distributeur}</div>
-      <div class="detail-location">
-        ${ICONS.pin}
-        <span>${[place.Adresse, place.zipcode, place.lieu].filter(Boolean).join(", ")}</span>
-      </div>
+      <h2 class="detail-title">${esc(place.Distributeur)}</h2>
+      <p class="detail-address">${esc(address)}</p>
     </div>
 
-    <!-- Corps -->
+    <!-- Tableau de spécifications -->
     <div class="detail-body">
 
-      <div class="detail-section-title">Contacts</div>
+      ${group("Contact",
+        row("Responsable",  esc(deshout(place.Responsable))) +
+        row("Gestionnaire", esc(deshout(place.Gestionnaire))) +
+        row("Email",        mail) +
+        row("Téléphone",    phone, true) +
+        row("Site web",     site)
+      )}
 
-      <div class="detail-row">
-        <div class="detail-row-icon">${ICONS.user}</div>
-        <div class="detail-row-content">
-          <div class="detail-row-label">Responsable</div>
-          <div class="detail-row-value">${place.Responsable || "—"}</div>
-        </div>
-      </div>
+      ${group("Couverture",
+        row("Zone",   esc(place.Zone), true) +
+        row("Statut", discovery)
+      )}
 
-      ${place.Gestionnaire ? `
-      <div class="detail-row">
-        <div class="detail-row-icon">${ICONS.user}</div>
-        <div class="detail-row-content">
-          <div class="detail-row-label">Gestionnaire</div>
-          <div class="detail-row-value">${place.Gestionnaire}</div>
-        </div>
-      </div>` : ""}
-
-      <div class="detail-row">
-        <div class="detail-row-icon">${ICONS.mail}</div>
-        <div class="detail-row-content">
-          <div class="detail-row-label">Email</div>
-          <div class="detail-row-value">${mail}</div>
-        </div>
-      </div>
-
-      <div class="detail-row">
-        <div class="detail-row-icon">${ICONS.phone}</div>
-        <div class="detail-row-content">
-          <div class="detail-row-label">Téléphone</div>
-          <div class="detail-row-value">${phone}</div>
-        </div>
-      </div>
-
-      ${site ? `
-      <div class="detail-row">
-        <div class="detail-row-icon">${ICONS.globe}</div>
-        <div class="detail-row-content">
-          <div class="detail-row-label">Site web</div>
-          <div class="detail-row-value">${site}</div>
-        </div>
-      </div>` : ""}
-
-      <div class="detail-section-title">Informations</div>
-
-      ${place.Zone ? `
-      <div class="detail-row">
-        <div class="detail-row-icon">${ICONS.zone}</div>
-        <div class="detail-row-content">
-          <div class="detail-row-label">Zone</div>
-          <div class="detail-row-value">${place.Zone}</div>
-        </div>
-      </div>` : ""}
-
-      ${products ? `
-      <div class="detail-row">
-        <div class="detail-row-icon">${ICONS.box}</div>
-        <div class="detail-row-content">
-          <div class="detail-row-label">Produits</div>
-          <div class="detail-row-value">
-            <div class="product-tags">${products}</div>
-          </div>
-        </div>
-      </div>` : ""}
-
-      ${place["Journée découverte"] ? `
-      <div class="detail-row">
-        <div class="detail-row-icon">${ICONS.calendar}</div>
-        <div class="detail-row-content">
-          <div class="detail-row-label">Journée découverte</div>
-          <div class="detail-row-value">${discovery}</div>
-        </div>
-      </div>` : ""}
+      ${group("Produits distribués", refs
+        ? `<div class="spec-row is-block">
+            <div class="spec-val"><div class="ref-list">${refs}</div></div>
+          </div>`
+        : ""
+      )}
 
     </div>
 
-    <!-- Bouton retour -->
     <div id="back-button" role="button" tabindex="0" aria-label="Retour à la liste">
       ${ICONS.backArrow}
       Retour à la liste
@@ -343,22 +326,24 @@ function showPlaceDetails(place) {
 
 // ─── Retour à la liste ───────────────────────────────────────
 function goBackToList() {
-  detailsEl.style.display   = "none";
-  placesListEl.style.display = "block";
-  searchBarEl.style.display  = "flex";
-
-  if (currentSearch) {
-    resultsLabelEl.style.display = "block";
-  }
+  detailsEl.style.display      = "none";
+  placesListEl.style.display   = "block";
+  searchBarEl.style.display    = "flex";
+  resultsLabelEl.style.display = "flex";
 
   map.setCenter({ lat: 46.603354, lng: 1.888334 });
   map.setZoom(6);
 }
 
-// ─── Label résultats ─────────────────────────────────────────
-function setResultsLabel(text) {
-  resultsLabelEl.textContent = text;
-  resultsLabelEl.style.display = "block";
+// ─── Barre de résultats ──────────────────────────────────────
+// Le compteur est toujours vrai ; la portée dit d'où l'on mesure.
+function setResultsBar(count, scope) {
+  const noun = count === 1 ? "distributeur" : "distributeurs";
+  resultsLabelEl.innerHTML = `
+    <span class="results-count">${count}</span>
+    <span class="results-scope">${esc(scope ? `${noun}  ${scope}` : `${noun} `)}</span>
+  `;
+  resultsLabelEl.style.display = "flex";
 }
 
 // ─── Surlignage dans la sidebar ──────────────────────────────

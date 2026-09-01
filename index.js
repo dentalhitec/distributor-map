@@ -20,6 +20,7 @@ const ICONS = {
   zone:     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>`,
   box:      `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`,
   calendar: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  globe:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
   arrow:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
   backArrow:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
 };
@@ -222,6 +223,14 @@ function showPlaceDetails(place) {
     ? `<a href="mailto:${place.mail}">${place.mail}</a>`
     : "—";
 
+  // Site web
+  const siteUrl = place.site
+    ? (/^https?:\/\//i.test(place.site) ? place.site : `https://${place.site}`)
+    : null;
+  const site = siteUrl
+    ? `<a href="${siteUrl}" target="_blank" rel="noopener">${place.site.replace(/^https?:\/\//i,"").replace(/\/$/,"")}</a>`
+    : null;
+
   detailsEl.innerHTML = `
     <!-- Hero bleu -->
     <div class="detail-hero">
@@ -272,6 +281,15 @@ function showPlaceDetails(place) {
           <div class="detail-row-value">${phone}</div>
         </div>
       </div>
+
+      ${site ? `
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS.globe}</div>
+        <div class="detail-row-content">
+          <div class="detail-row-label">Site web</div>
+          <div class="detail-row-value">${site}</div>
+        </div>
+      </div>` : ""}
 
       <div class="detail-section-title">Informations</div>
 

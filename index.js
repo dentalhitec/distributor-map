@@ -1,8 +1,3 @@
-/* ============================================================
-   DENTALHITEC — Carte Distributeurs
-   index.js — Logique principale
-   ============================================================ */
-
 let map;
 let markers       = [];
 let placesListEl;
@@ -10,27 +5,16 @@ let detailsEl;
 let searchBarEl;
 let resultsLabelEl;
 
-// ─── Icônes SVG inline ──────────────────────────────────────
-// Réduites au strict nécessaire : la fiche de détail se lit comme un
-// tableau de spécifications, où un libellé fait le travail d'une icône.
 const ICONS = {
   backArrow: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
 };
 
-// ─── Échappement ────────────────────────────────────────────
-// Les données viennent d'un JSON édité à la main : on les traite en texte.
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
   ));
 }
 
-// ─── Normalisation de casse ─────────────────────────────────
-// Le JSON est saisi en capitales ("BRADFORD, ONTARIO", "ANWAR KHALID").
-// La hiérarchie repose sur le contraste capitales étendues / bas de casse :
-// si l'adresse crie autant que la raison sociale, ce contraste disparaît.
-// On ne retouche donc que les chaînes sans aucune minuscule, pour laisser
-// intacte toute casse déjà voulue ("SAS EDI", "Hamed Sargazi").
 const PARTICLES = new Set([
   "de", "du", "des", "d", "la", "le", "les", "l",
   "sur", "sous", "lès", "lez", "en", "et", "au", "aux",
@@ -46,10 +30,6 @@ function deshout(text, placeName = false) {
   });
 }
 
-// ─── Graduation du rail ─────────────────────────────────────
-// La longueur de la graduation encode la bande de distance : le plus
-// proche porte la plus longue. Sans recherche active il n'y a rien à
-// mesurer, et l'échelle reste uniforme plutôt que de faire semblant.
 const TICK_BANDS = [
   { max: 50,       width: 13 },
   { max: 200,      width: 10 },
@@ -63,7 +43,6 @@ function tickWidth(distance) {
   return TICK_BANDS.find(b => distance < b.max).width;
 }
 
-// ─── Chargement Google Maps ──────────────────────────────────
 function loadGoogleMaps() {
   (g => {
     var h, a, k,
@@ -92,7 +71,6 @@ function loadGoogleMaps() {
   initMap();
 }
 
-// ─── Initialisation de la carte ──────────────────────────────
 async function initMap() {
   const { Map } = await google.maps.importLibrary("maps");
   const { Autocomplete } = await google.maps.importLibrary("places");
@@ -118,7 +96,6 @@ async function initMap() {
   const autocomplete = new Autocomplete(searchInput);
   autocomplete.bindTo("bounds", map);
 
-  // Chargement données
   fetch("data.json")
     .then(r => r.json())
     .then(data => {
@@ -127,7 +104,6 @@ async function initMap() {
     })
     .catch(err => console.error("Erreur chargement JSON :", err));
 
-  // Autocomplete
   autocomplete.addListener("place_changed", () => {
     const place = autocomplete.getPlace();
     if (!place.geometry) return;
@@ -142,7 +118,6 @@ async function initMap() {
   });
 }
 
-// ─── Ajout d'un marqueur ─────────────────────────────────────
 function addMarker(place) {
   const defaultIcon = {
     url: "marker.png",
@@ -175,7 +150,6 @@ function addMarker(place) {
   });
 }
 
-// ─── Mise à jour de la liste ─────────────────────────────────
 function updatePlacesList(placesWithDistances, scope) {
   placesListEl.innerHTML = "";
   placesWithDistances.forEach(({ place, distance }, i) => {
@@ -185,7 +159,6 @@ function updatePlacesList(placesWithDistances, scope) {
   setResultsBar(placesWithDistances.length, scope);
 }
 
-// ─── Création d'un élément liste ────────────────────────────
 function createListItem(place, distance, index) {
   const li = document.createElement("li");
   li.classList.add("place-item");
@@ -193,14 +166,12 @@ function createListItem(place, distance, index) {
   li.setAttribute("tabindex", "0");
   li.setAttribute("aria-label", place.Distributeur);
 
-  // La graduation se trace en cascade : un seul moment orchestré.
   li.style.setProperty("--tick", `${tickWidth(distance)}px`);
 
   const dist = distance !== undefined
     ? `<span class="place-distance">${distance.toFixed(0)} km</span>`
     : "";
 
-  // Le lieu suffit dans la liste ; la voie complète attend la fiche.
   const where = deshout(place.lieu || place.Adresse || "", true);
 
   li.innerHTML = `
@@ -229,15 +200,12 @@ function createListItem(place, distance, index) {
   return li;
 }
 
-// ─── Affichage du détail ─────────────────────────────────────
 function showPlaceDetails(place) {
-  // Chaque référence portée par le distributeur, une par ligne.
   const refs = place.Produit
     ? place.Produit.split(",").map(p => p.trim()).filter(Boolean)
         .map(p => `<div class="ref-item">${esc(p)}</div>`).join("")
     : null;
 
-  // Le vert ne sert qu'au statut.
   const discovery = place["Journée découverte"]
     ? `<span class="badge-discovery">${esc(place["Journée découverte"])}</span>`
     : null;
@@ -250,7 +218,6 @@ function showPlaceDetails(place) {
     ? `<a href="mailto:${esc(place.mail)}">${esc(place.mail)}</a>`
     : null;
 
-  // Site web : on complète le protocole s'il manque, on l'affiche sans.
   const siteUrl = place.site
     ? (/^https?:\/\//i.test(place.site) ? place.site : `https://${place.site}`)
     : null;
@@ -258,7 +225,6 @@ function showPlaceDetails(place) {
     ? `<a href="${esc(siteUrl)}" target="_blank" rel="noopener">${esc(place.site.replace(/^https?:\/\//i, "").replace(/\/$/, ""))}</a>`
     : null;
 
-  // Une ligne de spécification n'apparaît que si la donnée existe.
   const row = (key, value, isData) => value
     ? `<div class="spec-row">
         <div class="spec-key">${key}</div>
@@ -266,7 +232,6 @@ function showPlaceDetails(place) {
       </div>`
     : "";
 
-  // Un intertitre n'apparaît que si son groupe porte au moins une ligne.
   const group = (title, rows) =>
     rows ? `<div class="spec-group-title">${title}</div>${rows}` : "";
 
@@ -324,7 +289,6 @@ function showPlaceDetails(place) {
   backBtn.onkeydown = (e) => { if (e.key === "Enter") goBackToList(); };
 }
 
-// ─── Retour à la liste ───────────────────────────────────────
 function goBackToList() {
   detailsEl.style.display      = "none";
   placesListEl.style.display   = "block";
@@ -335,8 +299,6 @@ function goBackToList() {
   map.setZoom(6);
 }
 
-// ─── Barre de résultats ──────────────────────────────────────
-// Le compteur est toujours vrai ; la portée dit d'où l'on mesure.
 function setResultsBar(count, scope) {
   const noun = count === 1 ? "distributeur" : "distributeurs";
   resultsLabelEl.innerHTML = `
@@ -346,7 +308,6 @@ function setResultsBar(count, scope) {
   resultsLabelEl.style.display = "flex";
 }
 
-// ─── Surlignage dans la sidebar ──────────────────────────────
 function highlightPlaceInSidebar(place) {
   document.querySelectorAll(".place-item").forEach(el => el.classList.remove("highlight"));
 
@@ -358,7 +319,6 @@ function highlightPlaceInSidebar(place) {
   }
 }
 
-// ─── Tri par distance ────────────────────────────────────────
 function sortMarkersByDistance(location) {
   return markers
     .map(({ place }) => ({
@@ -371,7 +331,6 @@ function sortMarkersByDistance(location) {
     .sort((a, b) => a.distance - b.distance);
 }
 
-// ─── Calcul Haversine ────────────────────────────────────────
 function calculateDistance(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -384,5 +343,4 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ─── Démarrage ───────────────────────────────────────────────
 loadGoogleMaps();

@@ -8,17 +8,13 @@
     content="Carte interactive des distributeurs agréés Dentalhitec en France et à l'international." />
   <title>Distributeurs — Dentalhitec</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- Google Fonts via JS (chargé dans index.js) -->
 </head>
 
 <body>
   <div id="mapContainer">
 
-
-    <!-- ── Sidebar ────────────────────────────────────────────── -->
     <div id="sidebar">
 
-      <!-- Marque + recherche -->
       <div class="sidebar-header">
 
         <div class="sidebar-brand">
@@ -28,7 +24,6 @@
           <p class="sidebar-eyebrow">Réseau de distributeurs agréés</p>
         </div>
 
-        <!-- Champ de recherche -->
         <div id="search-container">
           <div class="search-wrapper">
             <span class="search-icon" aria-hidden="true">
@@ -44,23 +39,17 @@
         </div>
       </div>
 
-      <!-- Barre de résultats : compteur + portée de la recherche -->
       <div id="results-label" style="display:none;" role="status" aria-live="polite"></div>
 
-      <!-- Liste des distributeurs -->
       <ul id="places-list" role="list" aria-label="Liste des distributeurs"></ul>
 
-      <!-- Détail d'un distributeur -->
       <div id="place-details" style="display:none;"></div>
 
-      
+    </div>
 
-    </div><!-- /sidebar -->
-
-    <!-- ── Carte ───────────────────────────────────────────────── -->
     <div id="map" aria-label="Carte des distributeurs" style="height:100%"></div>
 
-  </div><!-- /mapContainer -->
+  </div>
 
   <script src="index.js"></script>
 </body>
